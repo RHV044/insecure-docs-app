@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ver documentos</title>
+</head>
+<body>
+  <h1>Documentos subidos</h1>
+  <ul id="docs"></ul>
+  <a href="/dashboard">Volver al panel</a>
+  <script>
+    fetch('/api/docs', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        let ul = document.getElementById('docs');
+        if(data.length === 0) ul.innerHTML = '<li>No hay documentos</li>';
+        else data.forEach(doc => {
+          let li = document.createElement('li');
+          // Agregar atributo download para forzar descarga
+          li.innerHTML = '<a href="/files/' + encodeURIComponent(doc) + '" download>' + doc + '</a>';
+          ul.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>

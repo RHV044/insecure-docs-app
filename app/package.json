@@ -1,0 +1,15 @@
+{
+  "name": "demo-vulnerabilidades-web",
+  "version": "1.0.0",
+  "description": "App web vulnerable para demo educativa de seguridad informática.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "initdb": "node init_db.js"
+  },
+  "author": "UTN Grupo 3",
+  "license": "MIT",
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  }
+}
