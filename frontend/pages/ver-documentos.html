@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ver documentos - Gestor Docs G3</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <script src="/components/navbar.js"></script>
+  <div class="form-container" style="max-width: 800px;">
+    <h1 class="form-title">📄 Documentos subidos</h1>
+    <div id="docs-container"></div>
+    <a href="/dashboard" class="back-link">← Volver al panel</a>
+  </div>
+  <script>
+    renderNavbar('ver-documentos');
+    function renderComentarios(archivo, contenedor) {
+      fetch('/api/comentarios?archivo=' + encodeURIComponent(archivo), { credentials: 'include' })
+        .then(r => r.json())
+        .then(comentarios => {
+          let html = `
+            <div style="margin-top: 16px; padding: 16px; background: var(--neutral-50); border-radius: var(--radius-lg); border: 1px solid var(--neutral-200);">
+              <h4 style="margin: 0 0 12px 0; color: var(--neutral-700); font-size: 14px;">💬 Comentarios</h4>
+          `;
+          if(comentarios.length === 0) {
+            html += '<p style="margin: 0; color: var(--neutral-500); font-size: 14px;">No hay comentarios aún</p>';
+          } else {
+            html += '<div style="margin-bottom: 12px;">';
+            comentarios.forEach(c => {
+              html += `
+                <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 6px; border: 1px solid var(--neutral-200);">
+                  <strong style="color: var(--primary-600); font-size: 13px;">${c.autor}:</strong>
+                  <span style="color: var(--neutral-700); font-size: 13px;">${c.comentario}</span>
+                </div>
+              `;
+            });
+            html += '</div>';
+          }
+          html += `
+            <form onsubmit="return enviarComentario(event, '${archivo}')" style="display: flex; gap: 8px;">
+              <input type="text" name="comentario" placeholder="Agregar comentario..." required 
+                     style="flex: 1; padding: 8px; border: 1px solid var(--neutral-300); border-radius: 6px; font-size: 13px;">
+              <input type="hidden" name="archivo" value="${archivo}">
+              <button type="submit" style="padding: 8px 16px; font-size: 13px; border-radius: 6px;">Comentar</button>            </form>
+          </div>`;
+          contenedor.innerHTML = html;});
+    }
+    
+    // Cargar y mostrar los documentos
+    async function cargarDocumentos() {
+      try {
+        const response = await fetch('/api/documentos', { credentials: 'include' });
+        if (!response.ok) throw new Error('Error al cargar documentos');
+        
+        const archivos = await response.json();
+        const container = document.getElementById('docs-container');
+        
+        if (archivos.length === 0) {
+          container.innerHTML = '<div class="info-card"><p>No hay documentos subidos aún.</p></div>';
+          return;
+        }
+        
+        container.innerHTML = archivos.map(archivo => `
+          <div class="form-group">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: white; border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="color: var(--primary-600); font-size: 24px;">📄</div>
+                <div>
+                  <h3 style="margin: 0; color: var(--neutral-800); font-size: 16px; font-weight: 600;">${archivo}</h3>
+                  <p style="margin: 0; color: var(--neutral-500); font-size: 14px;">Documento PDF</p>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <a href="/files/${encodeURIComponent(archivo)}" class="btn-secondary" style="font-size: 14px; padding: 8px 16px;" download>⬇️ Descargar</a>
+                <button onclick="toggleComentarios('${archivo}')" class="btn-secondary" style="font-size: 14px; padding: 8px 16px;">💬 Comentarios</button>
+              </div>
+            </div>
+            <div id="comentarios-${archivo.replace(/[^a-zA-Z0-9]/g, '')}" style="display: none;"></div>
+          </div>
+        `).join('');
+        
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('docs-container').innerHTML = '<div class="info-card"><p>Error al cargar documentos.</p></div>';
+      }
+    }
+      function toggleComentarios(archivo) {
+      const id = 'comentarios-' + archivo.replace(/[^a-zA-Z0-9]/g, '');
+      const container = document.getElementById(id);
+      
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        // Solo renderizar si el container está vacío
+        if (container.innerHTML.trim() === '') {
+          renderComentarios(archivo, container);
+        }
+      } else {
+        container.style.display = 'none';
+      }
+    }
+    
+    async function enviarComentario(event, archivo) {
+      event.preventDefault();
+      const form = event.target;
+      const comentario = form.comentario.value;
+      
+      try {
+        const response = await fetch('/api/comentarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archivo, comentario }),
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          form.comentario.value = '';
+          // Recargar comentarios
+          const id = 'comentarios-' + archivo.replace(/[^a-zA-Z0-9]/g, '');
+          const container = document.getElementById(id);
+          renderComentarios(archivo, container);
+        }
+      } catch (error) {
+        console.error('Error al enviar comentario:', error);
+      }
+      
+      return false;
+    }
+    
+    // Cargar documentos al cargar la página
+    cargarDocumentos();
+  </script>
+</body>
+</html>

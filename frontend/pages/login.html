@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión - Gestor Docs G3</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <script src="/components/navbar.js"></script>
+  <div class="form-container">
+    <h1 class="form-title">Iniciar sesión</h1>
+    <form method="POST" action="/api/auth/login">
+      <div class="form-group">
+        <label for="username" class="form-label">Usuario</label>
+        <input type="text" name="username" id="username" class="form-input" placeholder="Ingresa tu usuario" required>
+      </div>
+      <div class="form-group">
+        <label for="password" class="form-label">Contraseña</label>
+        <input type="password" name="password" id="password" class="form-input" placeholder="Ingresa tu contraseña" required>
+      </div>
+      <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
+        🔓 Iniciar sesión
+      </button>
+    </form>    <div class="info-card">
+      <h4>Cuentas de prueba</h4>
+      <!-- Aquí puedes agregar información de cuentas de prueba si es necesario -->
+    </div>
+  </div>
+  <script>
+    renderNavbar('login');
+  </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor Docs G3</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <script src="/components/navbar.js"></script>
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Gestión profesional de documentos</h1>
+      <p class="hero-description">
+        Organiza, comparte y comenta archivos PDF de manera simple y segura. Accede a tus documentos desde cualquier lugar y colabora con tu equipo de forma eficiente.
+      </p>      <div class="hero-cta">
+        <a href="/login" class="btn-primary">
+          🚀 Ingresar
+        </a>
+        <a href="#features" class="btn-secondary">
+          Ver funciones
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <img src="https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=800&q=80" alt="Gestión de documentos">
+    </div>
+  </section>
+  <section class="features" id="features">
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3 class="feature-title">Autenticación</h3>
+        <p class="feature-description">
+          Acceso seguro con roles de usuario y administrador.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📄</div>
+        <h3 class="feature-title">Gestión de documentos</h3>
+        <p class="feature-description">
+          Sube, descarga y comenta archivos PDF de manera sencilla.
+        </p>
+      </div>      <!-- ...otros features... -->
+    </div>
+  </section>
+  <script>
+    renderNavbar('inicio');
+  </script>
+</body>
+</html>

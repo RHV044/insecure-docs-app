@@ -4,12 +4,15 @@
   "description": "App web vulnerable para demo educativa de seguridad informática.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node backend/server.js",
     "initdb": "node init_db.js"
   },
   "author": "UTN Grupo 3",
   "license": "MIT",
   "dependencies": {
-    "sqlite3": "^5.1.6"
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "multer": "^2.0.1",
+    "sqlite3": "^5.1.7"
   }
 }

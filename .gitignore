@@ -1,3 +1,5 @@
 # Archivos a ignorar
 node_modules/
 upload.txt
+files/**
+__trash/**
