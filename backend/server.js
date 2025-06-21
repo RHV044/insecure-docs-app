@@ -37,6 +37,12 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware de logging para debug
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 // API endpoints
 app.use('/api/auth', authRouter);
 app.use('/api/documentos', documentosRouter);

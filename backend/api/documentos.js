@@ -5,6 +5,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { exec } = require('child_process'); // Para la vulnerabilidad RCE
 const router = express.Router();
 
 const upload = multer({

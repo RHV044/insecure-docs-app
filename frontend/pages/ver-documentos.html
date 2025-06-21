@@ -16,39 +16,66 @@
     <h1 class="form-title">📄 Documentos subidos</h1>
     <div id="docs-container"></div>
     <a href="/dashboard" class="back-link">← Volver al panel</a>
-  </div>
-  <script>
+  </div>  <script>
     renderNavbar('ver-documentos');
-    function renderComentarios(archivo, contenedor) {
+    
+    // Variable global para el rol del usuario
+    let userRole = null;
+    
+    // Obtener rol del usuario al cargar la página
+    async function getUserRole() {
+      try {
+        const response = await fetch('/api/auth/user', { credentials: 'include' });
+        if (response.ok) {
+          const userData = await response.json();
+          userRole = userData.rol;
+        }
+      } catch (error) {
+        console.error('Error obteniendo rol de usuario:', error);
+      }
+    }
+      function renderComentarios(archivo, contenedor) {
       fetch('/api/comentarios?archivo=' + encodeURIComponent(archivo), { credentials: 'include' })
         .then(r => r.json())
-        .then(comentarios => {
+        .then(data => {
           let html = `
             <div style="margin-top: 16px; padding: 16px; background: var(--neutral-50); border-radius: var(--radius-lg); border: 1px solid var(--neutral-200);">
               <h4 style="margin: 0 0 12px 0; color: var(--neutral-700); font-size: 14px;">💬 Comentarios</h4>
           `;
-          if(comentarios.length === 0) {
+          
+          if(!data.comentarios || data.comentarios.length === 0) {
             html += '<p style="margin: 0; color: var(--neutral-500); font-size: 14px;">No hay comentarios aún</p>';
           } else {
+            // Usar el HTML procesado del servidor (vulnerable a JS injection)
             html += '<div style="margin-bottom: 12px;">';
-            comentarios.forEach(c => {
-              html += `
-                <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 6px; border: 1px solid var(--neutral-200);">
-                  <strong style="color: var(--primary-600); font-size: 13px;">${c.autor}:</strong>
-                  <span style="color: var(--neutral-700); font-size: 13px;">${c.comentario}</span>
-                </div>
-              `;
-            });
+            html += data.html; // Aquí se inyecta el HTML del servidor
             html += '</div>';
           }
-          html += `
-            <form onsubmit="return enviarComentario(event, '${archivo}')" style="display: flex; gap: 8px;">
-              <input type="text" name="comentario" placeholder="Agregar comentario..." required 
-                     style="flex: 1; padding: 8px; border: 1px solid var(--neutral-300); border-radius: 6px; font-size: 13px;">
-              <input type="hidden" name="archivo" value="${archivo}">
-              <button type="submit" style="padding: 8px 16px; font-size: 13px; border-radius: 6px;">Comentar</button>            </form>
-          </div>`;
-          contenedor.innerHTML = html;});
+          
+          // Solo mostrar formulario si es administrador
+          if (userRole === 'admin') {
+            html += `
+              <form onsubmit="return enviarComentario(event, '${archivo}')" style="display: flex; gap: 8px;">
+                <input type="text" name="comentario" placeholder="Agregar comentario..." required 
+                       style="flex: 1; padding: 8px; border: 1px solid var(--neutral-300); border-radius: 6px; font-size: 13px;">
+                <input type="hidden" name="archivo" value="${archivo}">
+                <button type="submit" style="padding: 8px 16px; font-size: 13px; border-radius: 6px;">Comentar</button>
+              </form>
+            `;
+          } else {
+            html += `
+              <div style="padding: 12px; background: var(--orange-50); border: 1px solid var(--orange-200); border-radius: 6px; margin-top: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--orange-600); font-size: 16px;">🔒</span>
+                  <span style="color: var(--orange-700); font-size: 13px; font-weight: 500;">Solo los administradores pueden agregar comentarios</span>
+                </div>
+              </div>
+            `;
+          }
+          
+          html += '</div>';
+          contenedor.innerHTML = html;
+        });
     }
     
     // Cargar y mostrar los documentos
@@ -74,8 +101,7 @@
                   <h3 style="margin: 0; color: var(--neutral-800); font-size: 16px; font-weight: 600;">${archivo}</h3>
                   <p style="margin: 0; color: var(--neutral-500); font-size: 14px;">Documento PDF</p>
                 </div>
-              </div>
-              <div style="display: flex; gap: 8px;">
+              </div>              <div style="display: flex; gap: 8px;">
                 <a href="/files/${encodeURIComponent(archivo)}" class="btn-secondary" style="font-size: 14px; padding: 8px 16px;" download>⬇️ Descargar</a>
                 <button onclick="toggleComentarios('${archivo}')" class="btn-secondary" style="font-size: 14px; padding: 8px 16px;">💬 Comentarios</button>
               </div>
@@ -86,10 +112,10 @@
         
       } catch (error) {
         console.error('Error:', error);
-        document.getElementById('docs-container').innerHTML = '<div class="info-card"><p>Error al cargar documentos.</p></div>';
-      }
+        document.getElementById('docs-container').innerHTML = '<div class="info-card"><p>Error al cargar documentos.</p></div>';      }
     }
-      function toggleComentarios(archivo) {
+    
+    function toggleComentarios(archivo) {
       const id = 'comentarios-' + archivo.replace(/[^a-zA-Z0-9]/g, '');
       const container = document.getElementById(id);
       
@@ -103,8 +129,7 @@
         container.style.display = 'none';
       }
     }
-    
-    async function enviarComentario(event, archivo) {
+      async function enviarComentario(event, archivo) {
       event.preventDefault();
       const form = event.target;
       const comentario = form.comentario.value;
@@ -123,16 +148,28 @@
           const id = 'comentarios-' + archivo.replace(/[^a-zA-Z0-9]/g, '');
           const container = document.getElementById(id);
           renderComentarios(archivo, container);
+        } else if (response.status === 403) {
+          // Error de permisos
+          alert('❌ Solo los administradores pueden agregar comentarios');
+        } else {
+          alert('❌ Error al enviar comentario');
         }
       } catch (error) {
         console.error('Error al enviar comentario:', error);
+        alert('❌ Error de conexión al enviar comentario');
       }
       
       return false;
     }
     
-    // Cargar documentos al cargar la página
-    cargarDocumentos();
+    // Inicializar página
+    async function initPage() {
+      await getUserRole();
+      cargarDocumentos();
+    }
+    
+    // Cargar página
+    initPage();
   </script>
 </body>
 </html>
