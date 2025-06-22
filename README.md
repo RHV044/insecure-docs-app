@@ -4,8 +4,6 @@
 
 ---
 
-## 🎯 **Descripción**
-
 
 ⚠️ **ADVERTENCIA**: Esta aplicación contiene vulnerabilidades de seguridad **intencionalmente implementadas** para fines educativos. **NUNCA** usar en producción.
 
