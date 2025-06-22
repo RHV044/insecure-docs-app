@@ -31,9 +31,6 @@ Esta aplicación demuestra una **cadena de vulnerabilidades** que permite escala
 - **Objetivo**: Ejecutar código arbitrario en el servidor
 - **Escalación**: Control total del sistema
 
-### **🎓 Objetivo Educativo:**
-Demostrar cómo **múltiples vulnerabilidades aparentemente menores** pueden combinarse para lograr un **compromiso total del sistema**.
-
 ---
 
 ## 🚀 **Instalación y uso**
