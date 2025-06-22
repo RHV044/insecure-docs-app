@@ -87,8 +87,29 @@ router.post('/upload', requireAdminSecure, upload.single('file'), (req, res) => 
     
     console.log('📤 BACKEND: Renaming file from', oldPath, 'to', newPath);
     fs.renameSync(oldPath, newPath);
+      console.log('✅ BACKEND: File uploaded successfully:', originalName);
     
-    console.log('✅ BACKEND: File uploaded successfully:', originalName);
+    // Agregar comentario automático indicando quién subió el archivo
+    const crypto = require('crypto');
+    const sqlite3 = require('sqlite3').verbose();
+    const db = new sqlite3.Database(path.join(__dirname, '../files/db/g3.db'));
+    
+    const comentarioId = crypto.randomBytes(16).toString('hex');
+    const comentarioTexto = `Subido por ${req.user.username}`;
+    
+    console.log('📝 BACKEND: Adding automatic upload comment:', comentarioTexto);
+    
+    db.run('INSERT INTO comentarios (id, archivo, autor, comentario, user_id) VALUES (?, ?, ?, ?, ?)', 
+      [comentarioId, originalName, req.user.username, comentarioTexto, req.user.id], (err) => {
+      if (err) {
+        console.error('⚠️ BACKEND: Error adding upload comment:', err);
+        // No fallar la subida por esto, solo logear el error
+      } else {
+        console.log('✅ BACKEND: Upload comment added successfully');
+      }
+      db.close();
+    });
+    
     res.json({ success: true, filename: originalName, message: 'Archivo subido correctamente' });
   } catch (error) {
     console.error('❌ BACKEND: Error uploading document:', error);

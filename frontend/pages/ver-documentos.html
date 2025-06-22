@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <span style="color: var(--blue-600); font-size: 14px;">👥</span>meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ver documentos - Gestor Docs G3</title>
   <link rel="stylesheet" href="/assets/styles.css">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
@@ -65,12 +65,20 @@
             html += data.html; // Aquí se inyecta el HTML del servidor
             html += '</div>';
           }
-          
-          // Solo mostrar formulario si es administrador
+            // Solo mostrar formulario si es administrador
           if (userRole === 'admin') {
-            html += `
+            html += `              <div style="margin-bottom: 12px; padding: 12px; background: var(--blue-50); border: 1px solid var(--blue-200); border-radius: 6px;">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                  <span style="color: var(--blue-600); font-size: 14px;">�</span>
+                  <span style="color: var(--blue-700); font-size: 12px; font-weight: 500;">Referencias de usuarios disponibles:</span>
+                </div>
+                <div style="color: var(--blue-600); font-size: 11px; line-height: 1.5; margin-bottom: 8px;">
+                  <code>{{uploader}}</code> - quien subió el archivo<br>
+                  <code>{{firstCommenter}}</code> - primer comentarista<br>
+                  <code>{{previousCommenter}}</code> - comentarista anterior                </div>
+              </div>
               <form onsubmit="return enviarComentario(event, '${archivo}')" style="display: flex; gap: 8px;">
-                <input type="text" name="comentario" placeholder="Agregar comentario..." required 
+                <input type="text" name="comentario" placeholder="Ej: Gracias {{uploader}} por subir esto, respondo a {{previousCommenter}}" required 
                        style="flex: 1; padding: 8px; border: 1px solid var(--neutral-300); border-radius: 6px; font-size: 13px;">
                 <input type="hidden" name="archivo" value="${archivo}">
                 <button type="submit" style="padding: 8px 16px; font-size: 13px; border-radius: 6px;">Comentar</button>

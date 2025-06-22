@@ -7,17 +7,24 @@ const { requireLoginSecure, requireAdminSecure } = require('../utils/auth');
 const db = new sqlite3.Database(path.join(__dirname, '../files/db/g3.db'));
 const router = express.Router();
 
-// Obtener comentarios de un archivo - CON TEMPLATE PROCESSING
+// Obtener comentarios de un archivo - CON SISTEMA DE REFERENCIAS A USUARIOS
 router.get('/', requireLoginSecure, (req, res) => {
   console.log('💬 BACKEND: GET /api/comentarios - getting comments');
   console.log('💬 BACKEND: User:', req.user);
   console.log('💬 BACKEND: Query params:', req.query);
   
+  // NOTA DE DESARROLLO: 
+  // Esta funcionalidad permite referenciar a otros usuarios en comentarios
+  // Para mencionar al que subió el archivo: {{uploader}}
+  // Para mencionar al comentarista anterior: {{previousCommenter}}  
+  // Para mencionar al primer comentarista: {{firstCommenter}}
+  // Se usa eval() para "flexibilidad" en el procesamiento de variables
+  
   try {
     const archivo = req.query.archivo;
     console.log('💬 BACKEND: Getting comments for file:', archivo);
     
-    db.all('SELECT * FROM comentarios WHERE archivo = ?', [archivo], (err, rows) => {
+    db.all('SELECT * FROM comentarios WHERE archivo = ? ORDER BY id', [archivo], (err, rows) => {
       if (err) {
         console.error('❌ BACKEND: Database error getting comments:', err);
         return res.status(500).json({ error: 'Error al cargar comentarios', html: '' });
@@ -25,20 +32,52 @@ router.get('/', requireLoginSecure, (req, res) => {
       
       console.log('💬 BACKEND: Found comments:', rows);
       
-      // Procesar comentarios en templates del servidor (VULNERABLE)
+      // Procesar comentarios con sistema de referencias a usuarios (VULNERABLE)
       let html = '';
       if (rows && rows.length > 0) {
-        rows.forEach(comentario => {
-          console.log('💬 BACKEND: Processing comment:', comentario);
-          // VULNERABILIDAD: Evaluar comentarios como código JavaScript para "formatear"
-          let comentarioFormateado;
+        rows.forEach((comentario, index) => {
+          console.log('💬 BACKEND: Processing comment with user references:', comentario);
+          
+          // Sistema de referencias: permitir mencionar otros usuarios
+          let comentarioFormateado = comentario.comentario;
+          
           try {
-            // "Procesamiento avanzado" de comentarios - VULNERABLE A JS INJECTION
-            comentarioFormateado = eval(`"${comentario.comentario}"`);
-            console.log('💬 BACKEND: Formatted comment:', comentarioFormateado);
+            // Variables básicas para referencias de usuarios
+            const uploader = rows[0] ? rows[0].autor : 'desconocido'; // Primer comentario = quien subió
+            const firstCommenter = rows[1] ? rows[1].autor : 'nadie'; // Segundo comentario = primer comentarista real
+            const previousCommenter = index > 0 ? rows[index - 1].autor : 'nadie';
+            
+            // PASO 1: Procesar referencias básicas (seguro)
+            comentarioFormateado = comentarioFormateado
+              .replace(/\{\{uploader\}\}/g, uploader)
+              .replace(/\{\{firstCommenter\}\}/g, firstCommenter)
+              .replace(/\{\{previousCommenter\}\}/g, previousCommenter);
+            
+            // PASO 2: VULNERABILIDAD - Procesar referencias dinámicas {{...}}
+            // Justificación: Para "referencias avanzadas" y "flexibilidad de menciones"
+            if (comentarioFormateado.includes('{{') && comentarioFormateado.includes('}}')) {
+              console.log('🔍 BACKEND: Processing dynamic user references...');
+              
+              // VULNERABLE: Usar eval() para "referencias flexibles"
+              // El desarrollador pensó: "necesitamos flexibilidad para menciones complejas"
+              comentarioFormateado = comentarioFormateado.replace(/\{\{([^}]+)\}\}/g, (match, reference) => {
+                try {
+                  console.log('👤 BACKEND: Evaluating user reference:', reference);
+                  // VULNERABILIDAD CRÍTICA: eval() sobre input del usuario
+                  const result = eval(reference);
+                  console.log('✅ BACKEND: Reference result:', result);
+                  return result;
+                } catch (evalError) {
+                  console.log('⚠️ BACKEND: Reference evaluation failed:', evalError.message);
+                  return match; // Devolver referencia original si falla
+                }
+              });
+            }
+            
+            console.log('👥 BACKEND: User references processed:', comentarioFormateado);
           } catch (e) {
-            console.log('⚠️ BACKEND: Comment processing failed, using original:', e.message);
-            // Si falla el "procesamiento", usar comentario original
+            console.log('⚠️ BACKEND: Reference processing failed, using original:', e.message);
+            // Si falla el procesamiento, usar comentario original
             comentarioFormateado = comentario.comentario;
           }
           
@@ -51,11 +90,11 @@ router.get('/', requireLoginSecure, (req, res) => {
         });
       }
       
-      console.log('✅ BACKEND: Comments processed successfully');
+      console.log('✅ BACKEND: Comments processed with user references');
       res.json({ 
         comentarios: rows || [],
         html: html,
-        processed: true 
+        referencesProcessed: true 
       });
     });
   } catch (error) {
