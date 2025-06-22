@@ -58,12 +58,15 @@ async function initializeDatabase() {
     console.log('   - superadmin / super123 (rol: admin)');
     
     db.run('DROP TABLE IF EXISTS comentarios');
-    db.run('CREATE TABLE comentarios (id TEXT PRIMARY KEY, archivo TEXT, autor TEXT, comentario TEXT)', function() {
+    db.run('CREATE TABLE comentarios (id TEXT PRIMARY KEY, archivo TEXT, autor TEXT, comentario TEXT, user_id TEXT)', function() {
+      // Generar un ID fijo para el admin para los comentarios de ejemplo
+      const adminId = generateHashId();
+      
       // Agregar algunos comentarios de ejemplo con IDs hash
-      db.run('INSERT INTO comentarios (id, archivo, autor, comentario) VALUES (?, ?, ?, ?)', 
-        [generateHashId(), 'documento1.pdf', 'admin', 'Documento revisado y aprobado']);
-      db.run('INSERT INTO comentarios (id, archivo, autor, comentario) VALUES (?, ?, ?, ?)', 
-        [generateHashId(), 'documento2.pdf', 'admin', 'Requiere correcciones menores'], function() {
+      db.run('INSERT INTO comentarios (id, archivo, autor, comentario, user_id) VALUES (?, ?, ?, ?, ?)', 
+        [generateHashId(), 'documento1.pdf', 'admin', 'Documento revisado y aprobado', adminId]);
+      db.run('INSERT INTO comentarios (id, archivo, autor, comentario, user_id) VALUES (?, ?, ?, ?, ?)', 
+        [generateHashId(), 'documento2.pdf', 'admin', 'Requiere correcciones menores', adminId], function() {
           // Cerrar la base de datos después de que todas las operaciones se completen
           console.log('✅ Base de datos inicializada correctamente en:', dbPath);
           console.log('🎉 ¡Listo! Ahora puedes hacer login con cualquiera de los usuarios creados.');
