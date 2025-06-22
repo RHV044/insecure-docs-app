@@ -1,18 +1,17 @@
 # 📄 Gestor Docs G3
 
-**Aplicación web educativa para demostración de vulnerabilidades de seguridad**
+**Aplicación web para demostración de vulnerabilidades de seguridad**
 
 ---
 
 ## 🎯 **Descripción**
 
-Gestor Docs G3 es una aplicación w### **3. 🚨 Vulnerabilidad RCE (Remote Code Execution)**b de gestión de documentos PDF desarrollada con fines educativos. La aplicación incluye **vulnerabilidades intencionalmente implementadas** para demostrar técnicas de explotación y conceptos de seguridad informática.
 
 ⚠️ **ADVERTENCIA**: Esta aplicación contiene vulnerabilidades de seguridad **intencionalmente implementadas** para fines educativos. **NUNCA** usar en producción.
 
 ---
 
-## 🎯 **Flujo de Ataque Educativo**
+## 🎯 **Flujo de Ataque**
 
 Esta aplicación demuestra una **cadena de vulnerabilidades** que permite escalar privilegios desde usuario básico hasta control total del servidor:
 
