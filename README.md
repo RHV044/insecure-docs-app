@@ -5,10 +5,6 @@
 ---
 
 
-⚠️ **ADVERTENCIA**: Esta aplicación contiene vulnerabilidades de seguridad **intencionalmente implementadas** para fines educativos. **NUNCA** usar en producción.
-
----
-
 ## 🎯 **Flujo de Ataque**
 
 Esta aplicación demuestra una **cadena de vulnerabilidades** que permite escalar privilegios desde usuario básico hasta control total del servidor:
