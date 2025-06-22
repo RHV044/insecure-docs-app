@@ -78,23 +78,6 @@ http://localhost:3000
 
 ---
 
-## 🔴 **VULNERABILIDADES IMPLEMENTADAS**
-
-### **1. 💉 SQL Injection**
-
-#### **🎯 Ubicación:**
-- **Login** (`/api/auth/login`)
-
-#### **📝 Descripción:**
-Las consultas SQL utilizan concatenación directa de strings sin sanitización, permitiendo inyección de código SQL malicioso.
-
-#### **💀 Payloads de explotación:**
-
-**Login bypass:**
-```sql
-Usuario: admin'asd'
-Contraseña: cualquiera
-```
 
 
 
