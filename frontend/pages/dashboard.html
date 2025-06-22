@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="/assets/auth.js"></script>
 </head>
 <body>
   <script src="/components/navbar.js"></script>
@@ -40,7 +41,7 @@
       
       // Obtener rol del usuario para mostrar features apropiadas
       try {
-        const response = await fetch('/api/auth/user', { credentials: 'include' });
+        const response = await window.authManager.authenticatedFetch('/api/auth/user');
         if (response.ok) {
           const userData = await response.json();
           const isAdmin = userData.rol === 'admin';
@@ -53,8 +54,7 @@
           if (!isAdmin) {
             uploadBtn.style.display = 'none';
           }
-          
-          // Agregar features adicionales para admin
+            // Agregar features adicionales para admin
           if (isAdmin) {
             const featuresGrid = document.getElementById('features-grid');
             featuresGrid.innerHTML += `
@@ -62,11 +62,6 @@
                 <div class="feature-icon">⬆️</div>
                 <h3 class="feature-title">Subir archivos</h3>
                 <p class="feature-description">Carga nuevos documentos PDF al sistema.</p>
-              </a>
-              <a href="/buscar-usuarios" class="feature-card">
-                <div class="feature-icon">👥</div>
-                <h3 class="feature-title">Gestión de usuarios</h3>
-                <p class="feature-description">Busca y administra usuarios del sistema.</p>
               </a>
             `;
           }

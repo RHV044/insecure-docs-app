@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="/assets/auth.js"></script>
 </head>
 <body>
   <script src="/components/navbar.js"></script>
@@ -21,23 +21,37 @@
     
     // Variable global para el rol del usuario
     let userRole = null;
-    
-    // Obtener rol del usuario al cargar la página
+      // Obtener rol del usuario al cargar la página usando JWT
     async function getUserRole() {
       try {
-        const response = await fetch('/api/auth/user', { credentials: 'include' });
-        if (response.ok) {
-          const userData = await response.json();
+        const userData = await window.authManager.getCurrentUser();
+        if (userData) {
           userRole = userData.rol;
         }
       } catch (error) {
         console.error('Error obteniendo rol de usuario:', error);
       }
-    }
-      function renderComentarios(archivo, contenedor) {
-      fetch('/api/comentarios?archivo=' + encodeURIComponent(archivo), { credentials: 'include' })
-        .then(r => r.json())
+    }      function renderComentarios(archivo, contenedor) {
+      console.log('💬 COMMENTS: Rendering comments for file:', archivo);
+      
+      window.authManager.authenticatedFetch('/api/comentarios?archivo=' + encodeURIComponent(archivo))
+        .then(response => {
+          console.log('💬 COMMENTS: Response status:', response.status);
+          console.log('💬 COMMENTS: Response headers:', Object.fromEntries(response.headers.entries()));
+          
+          if (!response.ok) {
+            console.log('❌ COMMENTS: Response not ok');
+            return response.text().then(errorText => {
+              console.log('❌ COMMENTS: Error response text:', errorText);
+              throw new Error('Error loading comments: ' + response.status + ' - ' + errorText);
+            });
+          }
+          
+          return response.json();
+        })
         .then(data => {
+          console.log('💬 COMMENTS: Comments data received:', data);
+          
           let html = `
             <div style="margin-top: 16px; padding: 16px; background: var(--neutral-50); border-radius: var(--radius-lg); border: 1px solid var(--neutral-200);">
               <h4 style="margin: 0 0 12px 0; color: var(--neutral-700); font-size: 14px;">💬 Comentarios</h4>
@@ -75,23 +89,49 @@
           
           html += '</div>';
           contenedor.innerHTML = html;
+          console.log('💬 COMMENTS: Comments rendered successfully');
+        })
+        .catch(error => {
+          console.error('❌ COMMENTS: Exception loading comments:', error);
+          console.error('❌ COMMENTS: Error stack:', error.stack);
+          contenedor.innerHTML = `
+            <div style="margin-top: 16px; padding: 16px; background: var(--red-50); border-radius: var(--radius-lg); border: 1px solid var(--red-200);">
+              <p style="margin: 0; color: var(--red-700); font-size: 14px;">❌ Error al cargar comentarios: ${error.message}</p>
+            </div>
+          `;
         });
     }
-    
-    // Cargar y mostrar los documentos
-    async function cargarDocumentos() {
+      // Cargar y mostrar los documentos
+    async function cargarDocumentos() {      console.log('📄 VER_DOCS: Starting to load documents');
+      
       try {
-        const response = await fetch('/api/documentos', { credentials: 'include' });
-        if (!response.ok) throw new Error('Error al cargar documentos');
+        console.log('📄 VER_DOCS: Making request to /api/documentos');
+        const response = await window.authManager.authenticatedFetch('/api/documentos');
         
+        console.log('📄 VER_DOCS: Response received');
+        console.log('📄 VER_DOCS: Response status:', response.status);
+        console.log('📄 VER_DOCS: Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+          console.log('❌ VER_DOCS: Response not ok');
+          const errorText = await response.text();
+          console.log('❌ VER_DOCS: Error response text:', errorText);
+          throw new Error('Error al cargar documentos: ' + response.status + ' - ' + errorText);
+        }
+        
+        console.log('📄 VER_DOCS: Reading response JSON');
         const archivos = await response.json();
+        console.log('📄 VER_DOCS: Documents received:', archivos);
+        
         const container = document.getElementById('docs-container');
         
         if (archivos.length === 0) {
+          console.log('📄 VER_DOCS: No documents found');
           container.innerHTML = '<div class="info-card"><p>No hay documentos subidos aún.</p></div>';
           return;
         }
         
+        console.log('📄 VER_DOCS: Rendering', archivos.length, 'documents');
         container.innerHTML = archivos.map(archivo => `
           <div class="form-group">
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: white; border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); margin-bottom: 16px;">
@@ -101,18 +141,18 @@
                   <h3 style="margin: 0; color: var(--neutral-800); font-size: 16px; font-weight: 600;">${archivo}</h3>
                   <p style="margin: 0; color: var(--neutral-500); font-size: 14px;">Documento PDF</p>
                 </div>
-              </div>              <div style="display: flex; gap: 8px;">
+              </div><div style="display: flex; gap: 8px;">
                 <a href="/files/${encodeURIComponent(archivo)}" class="btn-secondary" style="font-size: 14px; padding: 8px 16px;" download>⬇️ Descargar</a>
                 <button onclick="toggleComentarios('${archivo}')" class="btn-secondary" style="font-size: 14px; padding: 8px 16px;">💬 Comentarios</button>
               </div>
             </div>
             <div id="comentarios-${archivo.replace(/[^a-zA-Z0-9]/g, '')}" style="display: none;"></div>
           </div>
-        `).join('');
-        
+        `).join('');        
       } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('docs-container').innerHTML = '<div class="info-card"><p>Error al cargar documentos.</p></div>';      }
+        console.error('❌ VER_DOCS: Exception loading documents:', error);
+        console.error('❌ VER_DOCS: Error stack:', error.stack);
+        document.getElementById('docs-container').innerHTML = '<div class="info-card"><p>Error al cargar documentos: ' + error.message + '</p></div>';      }
     }
     
     function toggleComentarios(archivo) {
@@ -128,35 +168,45 @@
       } else {
         container.style.display = 'none';
       }
-    }
-      async function enviarComentario(event, archivo) {
+    }      async function enviarComentario(event, archivo) {
       event.preventDefault();
       const form = event.target;
       const comentario = form.comentario.value;
       
-      try {
-        const response = await fetch('/api/comentarios', {
+      console.log('💬 SEND_COMMENT: Sending comment for file:', archivo);
+      console.log('💬 SEND_COMMENT: Comment text:', comentario);
+        
+        try {
+        console.log('💬 SEND_COMMENT: Making request to /api/comentarios');
+        const response = await window.authManager.authenticatedFetch('/api/comentarios', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ archivo, comentario }),
-          credentials: 'include'
+          body: JSON.stringify({ archivo, comentario })
         });
         
+        console.log('💬 SEND_COMMENT: Response status:', response.status);
+        console.log('💬 SEND_COMMENT: Response headers:', Object.fromEntries(response.headers.entries()));
+        
         if (response.ok) {
+          console.log('💬 SEND_COMMENT: Comment sent successfully');
           form.comentario.value = '';
           // Recargar comentarios
           const id = 'comentarios-' + archivo.replace(/[^a-zA-Z0-9]/g, '');
           const container = document.getElementById(id);
           renderComentarios(archivo, container);
         } else if (response.status === 403) {
+          console.log('❌ SEND_COMMENT: Permission denied');
           // Error de permisos
           alert('❌ Solo los administradores pueden agregar comentarios');
         } else {
-          alert('❌ Error al enviar comentario');
+          console.log('❌ SEND_COMMENT: Request failed');
+          const errorText = await response.text();
+          console.log('❌ SEND_COMMENT: Error response text:', errorText);
+          alert('❌ Error al enviar comentario: ' + response.status + ' - ' + errorText);
         }
       } catch (error) {
-        console.error('Error al enviar comentario:', error);
-        alert('❌ Error de conexión al enviar comentario');
+        console.error('❌ SEND_COMMENT: Exception sending comment:', error);
+        console.error('❌ SEND_COMMENT: Error stack:', error.stack);
+        alert('❌ Error de conexión al enviar comentario: ' + error.message);
       }
       
       return false;

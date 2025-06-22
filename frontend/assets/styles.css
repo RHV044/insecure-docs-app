@@ -337,6 +337,53 @@ body {
   box-shadow: 0 0 0 3px rgb(111 44 255 / 0.1);
 }
 
+/* Checkbox personalizado */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+  cursor: pointer;
+  margin: var(--space-3) 0;
+}
+
+.checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-sm);
+  margin-right: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.checkbox-container input[type="checkbox"]:checked + .checkmark {
+  background-color: var(--primary-500);
+  border-color: var(--primary-500);
+}
+
+.checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Mensajes de formulario */
+.message {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
 .info-card {
   margin-top: var(--space-6);
   padding: var(--space-4);

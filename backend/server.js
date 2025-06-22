@@ -5,33 +5,13 @@ const cookieParser = require('cookie-parser');
 
 const authRouter = require('./api/auth');
 const documentosRouter = require('./api/documentos');
-const usuariosRouter = require('./api/usuarios');
 const comentariosRouter = require('./api/comentarios');
 
-// Importar funciones de autenticación
-const { getSession } = require('./api/auth');
+// Importar middlewares seguros que verifican contra la BD
+const { requireLoginSecure, requireAdminSecure } = require('./utils/auth');
 
 const app = express();
 const PORT = 3000;
-
-// Middlewares de autenticación
-function requireLogin(req, res, next) {
-  const session = getSession(req);
-  if (!session) {
-    return res.redirect('/login');
-  }
-  req.user = session;
-  next();
-}
-
-function requireAdmin(req, res, next) {
-  const session = getSession(req);
-  if (!session || session.rol !== 'admin') {
-    return res.status(403).send('Acceso denegado. Solo administradores.');
-  }
-  req.user = session;
-  next();
-}
 
 app.use(cookieParser());
 app.use(express.json());
@@ -46,9 +26,9 @@ app.use((req, res, next) => {
 // API endpoints
 app.use('/api/auth', authRouter);
 app.use('/api/documentos', documentosRouter);
-app.use('/api/usuarios', usuariosRouter);
 app.use('/api/comentarios', comentariosRouter);
 
+// Endpoint temporal de debug
 // Servir archivos estáticos del frontend
 app.use('/assets', express.static(path.join(__dirname, '../frontend/assets')));
 app.use('/components', express.static(path.join(__dirname, '../frontend/components')));
@@ -59,10 +39,9 @@ app.get('/favicon.ico', (req, res) => res.redirect('/assets/favicon.svg'));
 // Servir páginas
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/index.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/login.html')));
-app.get('/dashboard', requireLogin, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/dashboard.html')));
-app.get('/buscar-usuarios', requireAdmin, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/buscar-usuarios.html')));
-app.get('/upload', requireAdmin, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/upload.html')));
-app.get('/ver-documentos', requireLogin, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/ver-documentos.html')));
+app.get('/dashboard', requireLoginSecure, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/dashboard.html')));
+app.get('/upload', requireAdminSecure, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/upload.html')));
+app.get('/ver-documentos', requireLoginSecure, (req, res) => res.sendFile(path.join(__dirname, '../frontend/pages/ver-documentos.html')));
 
 // Servir archivos PDF subidos
 app.use('/files', express.static(path.join(__dirname, 'files')));

@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="/assets/auth.js"></script>
 </head>
 <body>
   <script src="/components/navbar.js"></script>
@@ -34,28 +34,42 @@
     </div>
   </div>  <script>
     renderNavbar('upload');
-    
-    // Manejar envío del formulario con AJAX para mostrar popup
+      // Manejar envío del formulario con AJAX para mostrar popup
     document.getElementById('uploadForm').addEventListener('submit', async function(e) {
       e.preventDefault();
+      
+      console.log('📤 UPLOAD: Starting file upload process');
       
       const formData = new FormData(this);
       const submitBtn = document.getElementById('submitBtn');
       const originalText = submitBtn.innerHTML;
       
+      console.log('📤 UPLOAD: FormData created');
+      console.log('📤 UPLOAD: File selected:', document.getElementById('file').files[0]);
+      
       // Mostrar estado de carga
       submitBtn.innerHTML = '⏳ Subiendo...';
-      submitBtn.disabled = true;
-      
-      try {
+      submitBtn.disabled = true;        try {
+        console.log('📤 UPLOAD: Getting auth headers');
+        // Para FormData no agregamos Content-Type, el browser lo maneja
+        const headers = window.authManager.getAuthHeaders();
+        console.log('📤 UPLOAD: Auth headers:', headers);
+        
+        console.log('📤 UPLOAD: Making request to /api/documentos/upload');
         const response = await fetch('/api/documentos/upload', {
           method: 'POST',
-          body: formData,
-          credentials: 'include'
+          headers: headers,
+          body: formData
         });
         
+        console.log('📤 UPLOAD: Response received');
+        console.log('📤 UPLOAD: Response status:', response.status);
+        console.log('📤 UPLOAD: Response headers:', Object.fromEntries(response.headers.entries()));
+        
         if (response.ok) {
+          console.log('📤 UPLOAD: Upload successful, reading response');
           const result = await response.json();
+          console.log('📤 UPLOAD: Response data:', result);
           
           // Mostrar popup de éxito
           const popup = document.getElementById('notification-popup');
@@ -66,19 +80,21 @@
           // Ocultar popup después de 3 segundos
           setTimeout(() => {
             popup.style.display = 'none';
-            // Redireccionar al dashboard
-            window.location.href = '/dashboard';
+            // Redireccionar al dashboard            window.location.href = '/dashboard';
           }, 3000);
           
           // Limpiar formulario
           document.getElementById('file').value = '';
+            } else {
+          console.log('❌ UPLOAD: Upload failed');
+          const errorResponse = await response.json();
+          console.log('❌ UPLOAD: Error response:', errorResponse);
           
-        } else {
-          const error = await response.text();
-          alert('Error al subir archivo: ' + error);
+          // Mostrar mensaje de error específico
+          alert('❌ ' + (errorResponse.error || 'Error al subir archivo'));
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('❌ UPLOAD: Exception during upload:', error);
         alert('Error de conexión al subir archivo');
       } finally {
         // Restaurar botón

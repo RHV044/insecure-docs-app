@@ -7,16 +7,13 @@ function createNavbar(currentPage = '', userRole = null) {
     { href: '/dashboard', text: 'Panel', page: 'dashboard' },
     { href: '/ver-documentos', text: 'Documentos', page: 'ver-documentos' }
   ];
-  
-  // Links solo para administradores
+    // Links solo para administradores
   const adminLinks = [
-    { href: '/upload', text: 'Subir', page: 'upload' },
-    { href: '/buscar-usuarios', text: 'Usuarios', page: 'buscar-usuarios' }
+    { href: '/upload', text: 'Subir', page: 'upload' }
   ];
-  
-  // Links de autenticación
+    // Links de autenticación
   const authLinks = [
-    { href: '/api/auth/logout', text: 'Salir', page: 'logout' }
+    { href: 'javascript:void(0)', text: 'Salir', page: 'logout', onclick: 'window.authManager.logout()' }
   ];
   
   // Construir la lista de links según el rol
@@ -27,11 +24,11 @@ function createNavbar(currentPage = '', userRole = null) {
   }
   
   allLinks = [...allLinks, ...authLinks];
-  
-  // Generar HTML del navbar
-  const linksHtml = allLinks.map(link => 
-    `<li><a href="${link.href}" class="nav-link ${currentPage === link.page ? 'active' : ''}">${link.text}</a></li>`
-  ).join('');
+    // Generar HTML del navbar
+  const linksHtml = allLinks.map(link => {
+    const onclickAttr = link.onclick ? ` onclick="${link.onclick}"` : '';
+    return `<li><a href="${link.href}" class="nav-link ${currentPage === link.page ? 'active' : ''}"${onclickAttr}>${link.text}</a></li>`;
+  }).join('');
     return `
     <nav class="navbar">
       <div class="navbar-container">
@@ -46,32 +43,35 @@ function createNavbar(currentPage = '', userRole = null) {
   `;
 }
 
-// Función para renderizar el navbar dinámicamente
+// Función para renderizar el navbar dinámicamente con JWT
 async function renderNavbar(currentPage = '') {
   try {
-    // Obtener información del usuario actual
-    const response = await fetch('/api/auth/user', { credentials: 'include' });
-    
-    if (response.ok) {
-      // Usuario autenticado
-      const userData = await response.json();
-      const navbarHtml = createNavbar(currentPage, userData.rol);
-      document.body.insertAdjacentHTML('afterbegin', navbarHtml);
-    } else {
-      // Usuario no autenticado - mostrar solo navbar básico
-      const basicNavbar = `
-        <nav class="navbar">
-          <div class="navbar-container">
-            <a href="/" class="brand">Gestor Docs <span class="x">G3</span></a>
-            <ul class="nav-links">
-              <li><a href="/" class="nav-link ${currentPage === 'inicio' ? 'active' : ''}">Inicio</a></li>
-              <li><a href="/login" class="nav-link ${currentPage === 'login' ? 'active' : ''}">Login</a></li>
-            </ul>
-          </div>
-        </nav>
-      `;
-      document.body.insertAdjacentHTML('afterbegin', basicNavbar);
+    // Verificar si tenemos auth manager disponible
+    if (typeof window.authManager !== 'undefined' && window.authManager.isAuthenticated()) {
+      // Obtener información del usuario actual usando JWT
+      const userData = await window.authManager.getCurrentUser();
+      
+      if (userData) {
+        // Usuario autenticado
+        const navbarHtml = createNavbar(currentPage, userData.rol);
+        document.body.insertAdjacentHTML('afterbegin', navbarHtml);
+        return;
+      }
     }
+    
+    // Usuario no autenticado - mostrar navbar básico
+    const basicNavbar = `
+      <nav class="navbar">
+        <div class="navbar-container">
+          <a href="/" class="brand">Gestor Docs <span class="x">G3</span></a>
+          <ul class="nav-links">
+            <li><a href="/" class="nav-link ${currentPage === 'inicio' ? 'active' : ''}">Inicio</a></li>
+            <li><a href="/login" class="nav-link ${currentPage === 'login' ? 'active' : ''}">Login</a></li>
+          </ul>
+        </div>
+      </nav>
+    `;
+    document.body.insertAdjacentHTML('afterbegin', basicNavbar);
     
   } catch (error) {
     console.error('Error renderizando navbar:', error);
