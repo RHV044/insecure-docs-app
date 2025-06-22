@@ -42,10 +42,6 @@ Esta aplicación demuestra una **cadena de vulnerabilidades** que permite escala
 ### **Pasos de instalación:**
 
 1. **Clonar el repositorio:**
-```bash
-git clone https://github.com/tu-usuario/segweb-g3-gestor-documentos.git
-cd segweb-g3-gestor-documentos
-```
 
 2. **Instalar dependencias:**
 ```bash
